@@ -1,0 +1,30 @@
+{
+  "version": "tarl-journal/1",
+  "subject": "arabic",
+  "title": "مثال توضيحي: قراءة نص قصير",
+  "group": { "timing": "غير مذكور في المصدر", "level": "1", "path": "1", "block": "", "session": "3", "support_day": "1/24" },
+  "objectives": [
+    { "text": "قراءة جمل قصيرة بطلاقة", "origin": "source" },
+    { "text": "تمييز الحرف المستهدف في بداية الكلمة", "origin": "inferred" }
+  ],
+  "resources": ["بطاقات الحروف", "كراسة المتعلم"],
+  "activities": [
+    {
+      "title": "افتتاح الحصة", "duration": "5 د", "pages": "", "mastery": "",
+      "steps": [
+        { "text": "مراجعة شفهية لأصوات الحصة السابقة", "origin": "source", "stage": null }
+      ]
+    },
+    {
+      "title": "نشاط قرائي", "duration": "غير واضح في المصدر", "pages": "ص 12", "mastery": "",
+      "steps": [
+        { "text": "يقرأ الأستاذ الجملة ويشير إلى الكلمات", "origin": "source", "stage": "modeling" },
+        { "text": "يقرأ المتعلمون الجملة مع الأستاذ", "origin": "inferred", "stage": "guided" },
+        { "text": "يقرأ كل متعلم الجملة منفردًا", "origin": "suggested", "stage": "independent" }
+      ]
+    }
+  ],
+  "conflicts": [ { "topic": "رقم الصفحة", "versions": ["ص 12", "ص 14"] } ],
+  "gaps": ["مدة النشاط القرائي"],
+  "suggestions": ["إنهاء الحصة بقراءة فردية سريعة لثلاثة متعلمين"]
+}

@@ -54,6 +54,12 @@ button.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
 .tm{display:block;min-width:0;width:100%;text-align:center;font-size:12px}
 #sheet [contenteditable]:focus{outline:2px solid #c9961a;background:#fffbe6}
 .tb{font-weight:800}
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);width:min(720px,94vw);padding:16px}
+dialog::backdrop{background:#0008}
+textarea{width:100%;min-height:260px;direction:ltr;text-align:left;font:13px/1.5 ui-monospace,Consolas,monospace;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.err{color:#c0392b;white-space:pre-wrap;min-height:1.4em}
+#sheet .lg{font-size:12px;color:#444;margin:6px 0 0}
+#sheet .nt{min-height:52px;font-size:13px}
 @media print{body{background:#fff}header,.noprint{display:none!important}.wrap{padding:0;max-width:none}.panel{border:0;padding:0;margin:0}.scroll{overflow:visible}#sheet{border:0;padding:0;min-width:0}#sheet [contenteditable]:focus{outline:0;background:none}@page{size:A4;margin:8mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 </head>
@@ -75,6 +81,11 @@ button.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
       </div>
     </div>
     <div id="status" role="status">تُقرأ الملفات داخل متصفحك فقط، ولا تُرسَل إلى أي خادم.</div>
+    <div class="row" style="margin-top:10px">
+      <button class="alt" id="j0">لصق JSON للفوج الأول</button>
+      <button class="alt" id="j1">لصق JSON للفوج الثاني</button>
+      <button class="alt" id="spec">نسخ تعليمة الإخراج (JSON)</button>
+    </div>
   </section>
 
   <section class="panel">
@@ -90,11 +101,20 @@ button.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
   </section>
 </main>
 
+<dialog id="dlg">
+  <h2 style="margin:0 0 8px;font-size:1.1rem" id="jt"></h2>
+  <p style="margin:0 0 8px;color:var(--mute);font-size:.9rem">الصق هنا ناتج التحليل (JSON) كما أعطاك إياه Claude.</p>
+  <textarea id="jin" spellcheck="false" aria-label="JSON"></textarea>
+  <div class="err" id="jerr" role="alert"></div>
+  <div class="row" style="margin-top:8px"><button id="jok">ملء المذكرة</button><button class="alt" id="jex">إدراج مثال</button><button class="alt" id="jx">إغلاق</button></div>
+</dialog>
 <script>
+const SPEC="ثامنًا: صيغة الإخراج (JSON فقط)\n\nبعد إتمام التحليل وفق الأقسام السابقة، لا تُنتج جداول ولا شرحًا. أخرج كتلة JSON واحدة صالحة داخل ```json ... ``` ولا تكتب أي نص خارجها. الموقع هو الذي يعرض الجداول والمذكرة اليومية.\n\nالقواعد:\n- مفاتيح JSON بالإنجليزية كما في البنية أدناه، والقيم بالعربية.\n- origin: \"source\" لما ورد صراحة في الملف، \"inferred\" للاستنتاج الديداكتيكي، \"suggested\" للاقتراح الديداكتيكي. لا تضع \"source\" إلا لما ورد فعلًا في المصدر.\n- stage: \"modeling\" أو \"guided\" أو \"independent\" أو null. لا تضع قيمة إلا إذا كانت صريحة أو مستنتجة بثقة.\n- المعلومة المفقودة: \"غير مذكور في المصدر\". المعلومة غير المقروءة: \"غير واضح في المصدر\". لا تخمّن.\n- التعارضات تُدرج في conflicts بكل الروايات كما وردت دون حسم.\n- لا تُدرج أرقام الشرائح إلا عند الحاجة لتوضيح تعارض.\n- ملف واحد = JSON واحد = فوج واحد. عدد الأنشطة غير محدود.\n\nالبنية:\n\n{\n  \"version\": \"tarl-journal/1\",\n  \"subject\": \"arabic\",\n  \"title\": \"موضوع الحصة\",\n  \"group\": { \"timing\": \"\", \"level\": \"\", \"path\": \"\", \"block\": \"\", \"session\": \"\", \"support_day\": \"\" },\n  \"objectives\": [ { \"text\": \"\", \"origin\": \"source\" } ],\n  \"resources\": [ \"\" ],\n  \"activities\": [\n    {\n      \"title\": \"اسم النشاط\",\n      \"duration\": \"\",\n      \"pages\": \"\",\n      \"mastery\": \"\",\n      \"steps\": [ { \"text\": \"\", \"origin\": \"source\", \"stage\": null } ]\n    }\n  ],\n  \"conflicts\": [ { \"topic\": \"\", \"versions\": [ \"الرواية الأولى\", \"الرواية الثانية\" ] } ],\n  \"gaps\": [ \"\" ],\n  \"suggestions\": [ \"\" ]\n}\n";
+const EXAMPLE={"version": "tarl-journal/1", "subject": "arabic", "title": "مثال توضيحي: قراءة نص قصير", "group": {"timing": "غير مذكور في المصدر", "level": "1", "path": "1", "block": "", "session": "3", "support_day": "1/24"}, "objectives": [{"text": "قراءة جمل قصيرة بطلاقة", "origin": "source"}, {"text": "تمييز الحرف المستهدف في بداية الكلمة", "origin": "inferred"}], "resources": ["بطاقات الحروف", "كراسة المتعلم"], "activities": [{"title": "افتتاح الحصة", "duration": "5 د", "pages": "", "mastery": "", "steps": [{"text": "مراجعة شفهية لأصوات الحصة السابقة", "origin": "source", "stage": null}]}, {"title": "نشاط قرائي", "duration": "غير واضح في المصدر", "pages": "ص 12", "mastery": "", "steps": [{"text": "يقرأ الأستاذ الجملة ويشير إلى الكلمات", "origin": "source", "stage": "modeling"}, {"text": "يقرأ المتعلمون الجملة مع الأستاذ", "origin": "inferred", "stage": "guided"}, {"text": "يقرأ كل متعلم الجملة منفردًا", "origin": "suggested", "stage": "independent"}]}], "conflicts": [{"topic": "رقم الصفحة", "versions": ["ص 12", "ص 14"]}], "gaps": ["مدة النشاط القرائي"], "suggestions": ["إنهاء الحصة بقراءة فردية سريعة لثلاثة متعلمين"]};
 const $=id=>document.getElementById(id);
 const RX={obj:/أهداف|هدف|كفاية|كفايات/,res:/وسائل|الدعامات|الدعامة|العدة|الموارد/};
 const act=()=>({time:"",title:"",text:""});
-const mk=()=>({timing:"",level:"",path:"",block:"",session:"",support:"",topic:"",objectives:"",acts:[act(),act(),act(),act()]});
+const mk=()=>({timing:"",level:"",path:"",block:"",session:"",support:"",topic:"",objectives:"",notes:"",acts:[act(),act(),act(),act()]});
 let G=[mk(),mk()];
 const esc=s=>String(s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 
@@ -150,6 +170,7 @@ function dateText(){
 function render(){
   const obj=g=>`<td class="n h${g}"><div class="vt">الأهداف</div></td><td><div class="lines" contenteditable="true" data-g="${g}" data-k="objectives" style="min-height:78px">${esc(G[g].objectives)}</div></td>`;
   const sub=g=>`<td class="n h${g} tb">ت</td><td class="h${g} tb">مضامين الأنشطة الخاصة بالفوج: ${F(g,"topic",G[g].topic)}</td>`;
+  const nt=g=>`<td colspan="2" class="h${g}"><div class="tb">ملاحظات التحليل</div><div class="lines nt" contenteditable="true" data-g="${g}" data-k="notes">${esc(G[g].notes)}</div></td>`;
   let rows="";
   const m=G[0].acts.length;
   for(let i=0;i<m;i++){
@@ -160,7 +181,7 @@ function render(){
   <table><colgroup><col style="width:38px"><col><col style="width:38px"><col></colgroup>
   <tr>${H(0)}${H(1)}</tr>
   <tr>${obj(0)}${obj(1)}</tr>
-  <tr>${sub(0)}${sub(1)}</tr>${rows}</table>`;
+  <tr>${sub(0)}${sub(1)}</tr>${rows}<tr>${nt(0)}${nt(1)}</tr></table><p class="lg">◇ استنتاج ديداكتيكي · ✦ اقتراح ديداكتيكي · بدون رمز: وارد في المصدر</p>`;
 }
 
 async function load(g,file){
@@ -196,6 +217,65 @@ $("word").onclick=()=>{
   a.download="المذكرة اليومية.doc";a.click();URL.revokeObjectURL(a.href);
 };
 $("theme").onclick=()=>{const r=document.documentElement,dark=getComputedStyle(r).getPropertyValue("--bg").trim()==="#0f1824";r.dataset.theme=dark?"light":"dark"};
+/* ===== استيراد JSON ===== */
+const OR={source:"",inferred:"◇ ",suggested:"✦ "};
+const ST={modeling:"[نمذجة] ",guided:"[ممارسة موجهة] ",independent:"[ممارسة مستقلة] "};
+const norm=x=>typeof x==="string"?{text:x,origin:"source",stage:null}:(x||{});
+const line=x=>{x=norm(x);return (OR[x.origin]||"")+(ST[x.stage]||"")+(x.text||"")};
+function validate(j){
+  const e=[];
+  if(!j||typeof j!=="object"||Array.isArray(j))return["المحتوى ليس كائن JSON."];
+  if(j.version!=="tarl-journal/1")e.push("الحقل version يجب أن يكون tarl-journal/1");
+  if(!Array.isArray(j.activities)||!j.activities.length)e.push("activities: مصفوفة غير فارغة مطلوبة");
+  else j.activities.forEach((a,i)=>{
+    if(!a||!a.title)e.push("activities["+(i+1)+"]: الحقل title مفقود");
+    if(a&&a.steps&&!Array.isArray(a.steps))e.push("activities["+(i+1)+"].steps يجب أن تكون مصفوفة");
+  });
+  if(j.objectives&&!Array.isArray(j.objectives))e.push("objectives يجب أن تكون مصفوفة");
+  return e;
+}
+function fromJSON(g,j){
+  const d=mk(),gr=j.group||{};
+  d.timing=gr.timing||"";d.level=gr.level||"";d.path=gr.path||"";d.block=gr.block||"";d.session=gr.session||"";d.support=gr.support_day||"";
+  d.topic=j.title||"";
+  d.objectives=(j.objectives||[]).map(line).join("\n");
+  d.acts=j.activities.map(a=>{
+    const L=(a.steps||[]).map(line);
+    if(a.pages)L.push("الصفحات: "+a.pages);
+    if(a.mastery)L.push("نسبة التحكم: "+a.mastery);
+    return{time:a.duration||"",title:a.title||"",text:L.join("\n")};
+  });
+  const N=[];
+  if((j.resources||[]).length)N.push("الوسائل: "+j.resources.join("، "));
+  (j.conflicts||[]).forEach(c=>N.push("⚠ تعارض في المصدر ("+(c.topic||"")+"): "+(c.versions||[]).join(" / ")));
+  if((j.gaps||[]).length)N.push("نواقص المصدر: "+j.gaps.join("، "));
+  (j.suggestions||[]).forEach(x=>N.push("✦ اقتراح: "+x));
+  d.notes=N.join("\n");
+  while(d.acts.length<4)d.acts.push(act());
+  G[g]=d;
+  const m=Math.max(G[0].acts.length,G[1].acts.length);
+  G.forEach(x=>{while(x.acts.length<m)x.acts.push(act())});
+}
+let tg=0;
+function openJ(g){tg=g;$("jt").textContent="لصق JSON – الفوج "+(g?"الثاني":"الأول");$("jerr").textContent="";$("dlg").showModal();$("jin").focus()}
+$("j0").onclick=()=>openJ(0);$("j1").onclick=()=>openJ(1);
+$("jx").onclick=()=>$("dlg").close();
+$("jex").onclick=()=>{$("jin").value=JSON.stringify(EXAMPLE,null,2)};
+$("jok").onclick=()=>{
+  let j;
+  try{j=JSON.parse($("jin").value.replace(/^\s*```(?:json)?/i,"").replace(/```\s*$/,"").trim())}
+  catch(e){$("jerr").textContent="JSON غير صالح: "+e.message;return}
+  const er=validate(j);
+  if(er.length){$("jerr").textContent=er.join("\n");return}
+  readSheet();fromJSON(tg,j);render();
+  $("n"+tg).textContent="JSON";$("dlg").close();
+  $("status").textContent="تم ملء الفوج "+(tg?"الثاني":"الأول")+" من JSON. راجع العلامات ◇ و✦ والملاحظات قبل الطباعة.";
+};
+$("spec").onclick=async()=>{
+  try{await navigator.clipboard.writeText(SPEC);$("status").textContent="تم نسخ تعليمة الإخراج. الصقها في نهاية البرومبت قبل إرسال الملف إلى Claude."}
+  catch(e){$("jin").value=SPEC;openJ(0);$("jerr").textContent="تعذّر النسخ التلقائي: انسخ النص من الخانة يدويًا."}
+};
+
 render();
 </script>
 </body>
